@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
-import {IERC20}  from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ERC20}   from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { ERC4626 } from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title AMEND Vault (MVP)
@@ -20,7 +20,6 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
  * For v0.1, profit/loss is "realized" only when engine returns assets.
  */
 contract AmendVault is ERC4626, Ownable, ReentrancyGuard {
-    
     /// @notice Engine is the only entity allowed to move funds for external deployment
     address public engine;
 
@@ -37,7 +36,7 @@ contract AmendVault is ERC4626, Ownable, ReentrancyGuard {
     uint64 public lastReportTimestamp;
 
     // ============ Events ============
-    
+
     event EngineUpdated(address indexed newEngine);
     event FeeParamsUpdated(address indexed feeRecipient, uint16 feeBps);
     event Invested(uint256 assets);
@@ -46,14 +45,14 @@ contract AmendVault is ERC4626, Ownable, ReentrancyGuard {
     event LossReported(uint256 lossAssets);
 
     // ============ Modifiers ============
-    
+
     modifier onlyEngine() {
         require(msg.sender == engine, "AMEND: not engine");
         _;
     }
 
     // ============ Constructor ============
-    
+
     constructor(
         IERC20 asset_,
         string memory name_,
@@ -61,11 +60,7 @@ contract AmendVault is ERC4626, Ownable, ReentrancyGuard {
         address owner_,
         address feeRecipient_,
         uint16 managementFeeBps_
-    )
-        ERC20(name_, symbol_)
-        ERC4626(asset_)
-        Ownable(owner_)
-    {
+    ) ERC20(name_, symbol_) ERC4626(asset_) Ownable(owner_) {
         require(feeRecipient_ != address(0), "AMEND: feeRecipient=0");
         require(managementFeeBps_ <= 2000, "AMEND: fee too high"); // cap 20% for safety
         feeRecipient = feeRecipient_;
@@ -92,7 +87,7 @@ contract AmendVault is ERC4626, Ownable, ReentrancyGuard {
     }
 
     // ============ NAV Accounting ============
-    
+
     /**
      * @notice ERC4626 uses totalAssets() to compute share price
      * @dev NAV = on-chain USDC balance + investedAssets (tracked)
@@ -103,7 +98,7 @@ contract AmendVault is ERC4626, Ownable, ReentrancyGuard {
     }
 
     // ============ Engine: invest/divest ============
-    
+
     /**
      * @notice Move assets from vault to engine for external deployment
      * @dev This does NOT change share balances; it only changes where assets live
@@ -144,7 +139,7 @@ contract AmendVault is ERC4626, Ownable, ReentrancyGuard {
     }
 
     // ============ Profit / Loss Reporting ============
-    
+
     /**
      * @notice Report realized PROFIT in asset units (USDC)
      * @dev Fee is taken ONLY here (grossProfit > 0)
@@ -154,13 +149,10 @@ contract AmendVault is ERC4626, Ownable, ReentrancyGuard {
      */
     function reportProfit(uint256 grossProfitAssets) external onlyEngine nonReentrant {
         require(grossProfitAssets > 0, "AMEND: profit=0");
-        
+
         // ✅ FIX #2: Verify profit is backed by actual on-chain balance
         uint256 onChainBalance = IERC20(asset()).balanceOf(address(this));
-        require(
-            onChainBalance >= grossProfitAssets, 
-            "AMEND: profit not backed by assets"
-        );
+        require(onChainBalance >= grossProfitAssets, "AMEND: profit not backed by assets");
 
         // Calculate fee in assets
         uint256 feeAssets = (grossProfitAssets * managementFeeBps) / 10_000;
@@ -185,7 +177,7 @@ contract AmendVault is ERC4626, Ownable, ReentrancyGuard {
         require(lossAssets <= investedAssets, "AMEND: loss > invested"); // ✅ FIX #1: Validate loss bounds
 
         // ⚠️ NO FEES HERE - CORE INVARIANT ⚠️
-        
+
         // Reduce investedAssets to reflect the loss (NAV decreases)
         investedAssets -= lossAssets;
 
@@ -207,7 +199,7 @@ contract AmendVault is ERC4626, Ownable, ReentrancyGuard {
     }
 
     // ============ Safety Functions ============
-    
+
     /**
      * @notice Rescue accidentally sent tokens (not the vault asset)
      * @param token The token to rescue

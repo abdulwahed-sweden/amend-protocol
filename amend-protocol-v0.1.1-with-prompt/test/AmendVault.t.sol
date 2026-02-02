@@ -2,20 +2,20 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import {AmendVault} from "../src/AmendVault.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { AmendVault } from "../src/AmendVault.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /**
  * @title Mock USDC for testing
  * @dev Simulates USDC with 6 decimals (like real USDC on Base)
  */
 contract MockUSDC is ERC20 {
-    constructor() ERC20("USD Coin", "USDC") {}
-    
+    constructor() ERC20("USD Coin", "USDC") { }
+
     function mint(address to, uint256 amount) external {
         _mint(to, amount);
     }
-    
+
     function decimals() public pure override returns (uint8) {
         return 6; // Base USDC uses 6 decimals
     }
@@ -27,7 +27,6 @@ contract MockUSDC is ERC20 {
  * @dev Tests the core invariant: NO FEE ON LOSS
  */
 contract AmendVaultTest is Test {
-    
     AmendVault vault;
     MockUSDC usdc;
 
@@ -42,23 +41,16 @@ contract AmendVaultTest is Test {
     uint16 constant FEE_BPS = 1000;
 
     // ============ Setup ============
-    
+
     function setUp() public {
         vm.startPrank(owner);
-        
+
         // Deploy mock USDC
         usdc = new MockUSDC();
-        
+
         // Deploy AMEND Vault
-        vault = new AmendVault(
-            usdc,
-            "AMEND Vault",
-            "avUSDC",
-            owner,
-            feeRecipient,
-            FEE_BPS
-        );
-        
+        vault = new AmendVault(usdc, "AMEND Vault", "avUSDC", owner, feeRecipient, FEE_BPS);
+
         // Set engine
         vault.setEngine(engine);
         vm.stopPrank();
@@ -66,20 +58,20 @@ contract AmendVaultTest is Test {
         // Mint initial USDC to test users
         usdc.mint(user1, 100_000e6); // 100k USDC
         usdc.mint(user2, 100_000e6);
-        
+
         // Users approve vault
         vm.prank(user1);
         usdc.approve(address(vault), type(uint256).max);
-        
+
         vm.prank(user2);
         usdc.approve(address(vault), type(uint256).max);
     }
 
     // ============ Scenario 1: Basic Deposit & Invest ============
-    
+
     function test_DepositAndInvest() public {
         uint256 depositAmt = 1000e6; // 1000 USDC
-        
+
         // User deposits
         vm.prank(user1);
         vault.deposit(depositAmt, user1);
@@ -100,7 +92,7 @@ contract AmendVaultTest is Test {
     }
 
     // ============ Scenario 2: Profit & Fee Collection ============
-    
+
     function test_ReportProfit_TakesFee() public {
         // 1. User deposits 1000 USDC
         vm.prank(user1);
@@ -112,41 +104,41 @@ contract AmendVaultTest is Test {
 
         // 3. Simulate profit: Engine earned 100 USDC (10% return)
         usdc.mint(engine, 100e6); // Mint profit to engine
-        
+
         vm.startPrank(engine);
         usdc.approve(address(vault), 1100e6);
-        
+
         // Return original capital
         vault.divest(1000e6);
-        
+
         // Transfer profit to vault
         usdc.transfer(address(vault), 100e6);
-        
+
         // Report profit (triggers fee calculation)
         vault.reportProfit(100e6);
         vm.stopPrank();
 
         // ====== Verify Results ======
-        
+
         // Total assets should be 1100 USDC
         assertEq(vault.totalAssets(), 1100e6, "Total assets = 1100");
 
         // Treasury should have received fee shares
         uint256 treasuryShares = vault.balanceOf(feeRecipient);
         assertGt(treasuryShares, 0, "Treasury must have shares");
-        
+
         // User gained value but less than full profit (due to fee dilution)
         uint256 userAssets = vault.convertToAssets(vault.balanceOf(user1));
         assertGt(userAssets, 1000e6, "User gained value");
         assertLt(userAssets, 1100e6, "User diluted by fee");
-        
+
         // Log for visibility
         emit log_named_uint("User final value (USDC)", userAssets);
         emit log_named_uint("Treasury shares", treasuryShares);
     }
 
     // ============ Scenario 3: Loss & NO Fee (CORE INVARIANT) ============
-    
+
     function test_ReportLoss_NoFee() public {
         // 1. User deposits 1000 USDC
         vm.prank(user1);
@@ -160,27 +152,27 @@ contract AmendVaultTest is Test {
         vm.startPrank(engine);
         usdc.approve(address(vault), 800e6);
         vault.divest(800e6);
-        
+
         // ✅ FIX: Assert investedAssets before reportLoss
         assertEq(vault.investedAssets(), 200e6, "Invested should be 200 before loss report");
-        
+
         // Report the loss
         vault.reportLoss(200e6);
         vm.stopPrank();
 
         // ====== CORE INVARIANT CHECK ======
-        
+
         assertEq(vault.totalAssets(), 800e6, "NAV dropped to 800");
         assertEq(vault.balanceOf(feeRecipient), 0, "ZERO FEE ON LOSS");
         assertEq(vault.investedAssets(), 0, "Invested assets cleared");
-        
+
         // User's share value reflects loss
         uint256 userAssets = vault.convertToAssets(vault.balanceOf(user1));
         assertEq(userAssets, 800e6, "User bears loss proportionally");
     }
 
     // ============ Scenario 4: Loss After Profit (Complex) ============
-    
+
     function test_LossAfterProfit_NoExtraFees() public {
         // 1. Deposit
         vm.prank(user1);
@@ -189,7 +181,7 @@ contract AmendVaultTest is Test {
         // 2. First cycle: PROFIT
         vm.prank(engine);
         vault.invest(1000e6);
-        
+
         usdc.mint(engine, 100e6); // Engine earned 100 profit
         vm.startPrank(engine);
         usdc.approve(address(vault), 1100e6);
@@ -197,54 +189,54 @@ contract AmendVaultTest is Test {
         usdc.transfer(address(vault), 100e6); // Transfer profit
         vault.reportProfit(100e6);
         vm.stopPrank();
-        
+
         uint256 treasurySharesAfterProfit = vault.balanceOf(feeRecipient);
         assertGt(treasurySharesAfterProfit, 0, "Treasury has shares from profit");
-        
+
         emit log_named_uint("Treasury shares after profit", treasurySharesAfterProfit);
 
         // 3. Second cycle: LOSS
         uint256 currentAssets = vault.totalAssets(); // Should be 1100
         vm.prank(engine);
         vault.invest(currentAssets);
-        
+
         // Engine loses 200, returns only 900
         vm.startPrank(engine);
         usdc.approve(address(vault), 900e6);
         vault.divest(900e6);
-        
+
         // ✅ Verify investedAssets before loss report
         assertEq(vault.investedAssets(), 200e6, "Should have 200 still invested");
-        
+
         vault.reportLoss(200e6);
         vm.stopPrank();
 
         // ====== KEY CHECK: Treasury shares UNCHANGED after loss ======
         uint256 treasurySharesAfterLoss = vault.balanceOf(feeRecipient);
         assertEq(
-            treasurySharesAfterLoss, 
-            treasurySharesAfterProfit, 
+            treasurySharesAfterLoss,
+            treasurySharesAfterProfit,
             "NO EXTRA FEE ON LOSS - Treasury unchanged"
         );
-        
+
         emit log_named_uint("Treasury shares after loss", treasurySharesAfterLoss);
         emit log_named_uint("Final NAV", vault.totalAssets());
     }
 
     // ============ Scenario 5: Multiple Users Fairness ============
-    
+
     function test_MultipleUsers_FairDistribution() public {
         // User1 deposits 1000, User2 deposits 2000
         vm.prank(user1);
         vault.deposit(1000e6, user1);
-        
+
         vm.prank(user2);
         vault.deposit(2000e6, user2);
 
         // Engine invests and makes 300 profit (10%)
         vm.prank(engine);
         vault.invest(3000e6);
-        
+
         usdc.mint(engine, 300e6);
         vm.startPrank(engine);
         usdc.approve(address(vault), 3300e6);
@@ -262,11 +254,10 @@ contract AmendVaultTest is Test {
     }
 
     // ============ Fuzz Tests ============
-    
-    function testFuzz_ProfitAlwaysDilutesCorrectly(
-        uint256 depositAmount, 
-        uint256 profitAmount
-    ) public {
+
+    function testFuzz_ProfitAlwaysDilutesCorrectly(uint256 depositAmount, uint256 profitAmount)
+        public
+    {
         // Bound inputs to realistic ranges
         depositAmount = bound(depositAmount, 100e6, 1_000_000_000e6);
         profitAmount = bound(profitAmount, 1e6, depositAmount);
@@ -278,43 +269,40 @@ contract AmendVaultTest is Test {
 
         // Simulate profit (direct transfer for speed)
         usdc.mint(address(vault), profitAmount);
-        
+
         vm.prank(engine);
         vault.reportProfit(profitAmount);
 
         // ====== Invariant Check ======
         uint256 userValue = vault.convertToAssets(vault.balanceOf(user1));
-        
+
         // User must gain but less than full profit (fee taken)
         assertGt(userValue, depositAmount, "User must gain");
         assertLt(userValue, depositAmount + profitAmount, "Fee must be taken");
     }
 
-    function testFuzz_LossNeverTakesFee(
-        uint256 depositAmount, 
-        uint256 lossPercentage
-    ) public {
+    function testFuzz_LossNeverTakesFee(uint256 depositAmount, uint256 lossPercentage) public {
         // Bound inputs
         depositAmount = bound(depositAmount, 100e6, 1_000_000_000e6);
         lossPercentage = bound(lossPercentage, 1, 99); // 1% to 99% loss
-        
+
         uint256 lossAmount = (depositAmount * lossPercentage) / 100;
 
         // Setup
         usdc.mint(user1, depositAmount);
         vm.prank(user1);
         vault.deposit(depositAmount, user1);
-        
+
         // Engine invests all
         vm.prank(engine);
         vault.invest(depositAmount);
-        
+
         // Engine returns partial (simulating loss)
         uint256 returnAmount = depositAmount - lossAmount;
         vm.startPrank(engine);
         usdc.approve(address(vault), returnAmount);
         vault.divest(returnAmount);
-        
+
         // ✅ Verify investedAssets equals expected loss
         assertEq(vault.investedAssets(), lossAmount, "InvestedAssets should equal loss");
 
@@ -328,11 +316,11 @@ contract AmendVaultTest is Test {
     }
 
     // ============ Access Control Tests ============
-    
+
     function test_OnlyEngineCanInvest() public {
         vm.prank(user1);
         vault.deposit(1000e6, user1);
-        
+
         vm.prank(user1);
         vm.expectRevert("AMEND: not engine");
         vault.invest(500e6);
@@ -351,7 +339,7 @@ contract AmendVaultTest is Test {
     }
 
     // ============ Edge Cases ============
-    
+
     function test_ZeroDepositReverts() public {
         vm.prank(user1);
         vm.expectRevert();
@@ -361,12 +349,12 @@ contract AmendVaultTest is Test {
     function test_FullWithdrawal() public {
         vm.prank(user1);
         vault.deposit(1000e6, user1);
-        
+
         uint256 shares = vault.balanceOf(user1);
-        
+
         vm.prank(user1);
         vault.redeem(shares, user1, user1);
-        
+
         assertEq(vault.balanceOf(user1), 0, "All shares redeemed");
         assertEq(usdc.balanceOf(user1), 100_000e6, "USDC returned");
     }
@@ -375,10 +363,10 @@ contract AmendVaultTest is Test {
     function test_LossCannotExceedInvested() public {
         vm.prank(user1);
         vault.deposit(1000e6, user1);
-        
+
         vm.prank(engine);
         vault.invest(500e6); // Only invest 500
-        
+
         // Try to report 600 loss (more than invested)
         vm.prank(engine);
         vm.expectRevert("AMEND: loss > invested");
@@ -389,10 +377,10 @@ contract AmendVaultTest is Test {
     function test_ProfitMustBeBackedByAssets() public {
         vm.prank(user1);
         vault.deposit(1000e6, user1);
-        
+
         vm.prank(engine);
         vault.invest(1000e6); // Invest all, vault is empty
-        
+
         // Try to report profit without returning assets
         vm.prank(engine);
         vm.expectRevert("AMEND: profit not backed by assets");
@@ -452,11 +440,11 @@ contract AmendVaultTest is Test {
         // Treasury grew only during profit cycles
         assertEq(treasury2, treasury1, "No fee during loss cycle");
         assertGt(treasury3, treasury2, "Fee taken during profit cycle");
-        
+
         // User value tracked correctly
         uint256 userFinalValue = vault.convertToAssets(vault.balanceOf(user1));
         assertGt(userFinalValue, 1000e6, "User should be net positive");
-        
+
         emit log_named_uint("User final value", userFinalValue);
         emit log_named_uint("Treasury final shares", treasury3);
     }
