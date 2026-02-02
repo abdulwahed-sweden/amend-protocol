@@ -1,5 +1,7 @@
 # AMEND Protocol
 
+**Version:** v0.1.1 | **Status:** Production Ready | **Audit:** Pending
+
 A fair, Islamic-compliant DeFi vault protocol implementing profit-sharing with transparent fee mechanics.
 
 ## Core Invariant
