@@ -1,90 +1,200 @@
 # AMEND Protocol
 
-**Version:** v0.1.1 | **Status:** Production Ready | **Audit:** Pending
+**Ethical Fee Architecture for ERC4626 Vaults**
 
-A fair, Islamic-compliant DeFi vault protocol implementing profit-sharing with transparent fee mechanics.
+> **Version:** v0.1.1
+> **Status:** Production Ready (Testnet)
+> **Audit:** Pending
 
-## Core Invariant
+---
 
-**NO FEE ON LOSS** - The protocol only charges fees when investments generate profit. If a loss occurs, depositors bear the loss proportionally without any fee deduction.
+## The Problem
 
-## Overview
+Decentralized finance has introduced powerful primitives for capital coordination, but fee structures in yield-generating protocols often exhibit a fundamental asymmetry: protocols capture value regardless of performance outcomes, while users bear the full weight of downside risk.
 
-AMEND Protocol is a smart contract system that enables pooled capital deployment with strict accountability. Users deposit assets into an ERC4626-compliant vault, which are then deployed by authorized managers to whitelisted investment destinations. Returns are reported transparently, and fees are only extracted from genuine profits.
+This creates a misalignment of incentives:
 
-The protocol enforces mathematical guarantees:
-- Fees are never charged on principal or during loss periods
-- Loss amounts cannot exceed invested capital
-- Profit must be backed by actual on-chain assets before reporting
+- **Asymmetric risk distribution** — Protocol operators profit in all market conditions; depositors absorb losses alone.
+- **Performance-agnostic fees** — Management fees accrue on assets under management, not on value created.
+- **Opaque fee logic** — Fee extraction mechanics are often buried in complex accounting, making it difficult for users to verify fairness.
+- **"Code is Law" as justification** — Technical immutability is used to normalize extractive structures, rather than to enforce ethical constraints.
 
-## Architecture
+These patterns are not malicious by design, but they reflect a gap in how fee mechanisms have been architected. AMEND Protocol addresses this gap.
 
-### AmendVault (ERC4626)
+---
 
-The vault manages user deposits and share accounting. It implements the standard ERC4626 tokenized vault interface with extensions for:
-- Investment tracking via `investedAssets`
-- Profit reporting with fee extraction
-- Loss reporting without fees
-- Engine-restricted operations
+## The AMEND Principle
 
-### AmendEngine (RBAC + Whitelist)
+AMEND introduces a mathematically enforced correction to fee architecture:
 
-The engine manages capital deployment with role-based access control:
+```
+┌─────────────────────────────────────────────────────────┐
+│                                                         │
+│                   NO FEE ON LOSS                        │
+│                                                         │
+│   Fees are extracted ONLY when realized profit > 0.    │
+│   Losses NEVER trigger fee minting. Ever.              │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
 
-| Role | Responsibility |
-|------|---------------|
-| ADMIN_ROLE | Whitelist management, pause control |
-| MANAGER_ROLE | Fund deployment and recall |
-| REPORTER_ROLE | Profit and loss settlement |
+This is not a governance promise. It is a **structural invariant** enforced at the smart contract level:
 
-Only whitelisted destinations can receive deployed funds. The engine maintains atomic accounting of deployed amounts.
+- The `reportLoss()` function contains no fee logic.
+- There is no conditional path that mints shares on loss.
+- Fuzz testing with 256+ randomized scenarios confirms invariant integrity.
+- The constraint is immutable once deployed.
 
-## Security Model
+---
 
-### Trust Assumptions
+## System Status
 
-1. **Vault Owner** - Controls engine assignment and fee parameters. Must be a multisig for production.
-2. **Engine Admin** - Controls destination whitelist and emergency functions. Must be a multisig.
-3. **Engine Manager** - Deploys and recalls funds. Can be automated or multisig-controlled.
-4. **Engine Reporter** - Reports P&L. Can be automated keeper for frequent settlements.
-5. **Destinations** - External contracts receiving funds. Must be vetted off-chain.
+| Version | Status | Architecture | Description |
+|---------|--------|--------------|-------------|
+| **v0.1.1** | Production Ready | Explicit Settlement | Stable release enforcing core invariant. Engine pushes funds via `divest()` + `reportProfit()`. |
+| **v0.2.0** | Beta / Under Review | Atomic Settlement | Vault pulls funds via `repay()`. Eliminates intermediate accounting states. |
 
-### Engine Authority
+**Important:**
+- v0.2.0 does **not** replace v0.1.1.
+- Both versions exist in parallel within this repository.
+- v0.1.1 remains the production reference for audit and deployment.
 
-The engine has full authority over vault investment operations. A compromised engine could:
-- Deploy funds to malicious destinations (mitigated by whitelist)
-- Delay fund returns (operational risk)
+---
 
-The engine cannot:
-- Report unbacked profits (blocked by on-chain balance verification)
-- Report losses exceeding invested amount (blocked by accounting check)
-- Extract fees on losses (blocked by invariant)
+## Architecture Overview
 
-### Protections Implemented
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         AMEND Protocol                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   ┌─────────────┐         ┌─────────────┐         ┌──────────┐ │
+│   │    User     │ deposit │  AmendVault │ invest  │  Amend   │ │
+│   │             │────────►│  (ERC4626)  │────────►│  Engine  │ │
+│   │             │◄────────│             │◄────────│          │ │
+│   └─────────────┘ withdraw└─────────────┘  repay  └────┬─────┘ │
+│                         │                              │       │
+│                         │ Invariant Enforcement        │       │
+│                         │ • NO FEE ON LOSS             │       │
+│                         │ • Share dilution model       │       │
+│                         │ • Principal protection       │       │
+│                                                        ▼       │
+│                                               ┌──────────────┐ │
+│                                               │ Whitelisted  │ │
+│                                               │ Destinations │ │
+│                                               └──────────────┘ │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-- ReentrancyGuard on all fund-moving functions
-- Pausable for emergency stops
-- SafeERC20 for token operations
-- AccessControl with role separation
-- Whitelist for destination addresses
-- Checks-Effects-Interactions pattern
+**Component Responsibilities:**
 
-## Status
+| Component | Role |
+|-----------|------|
+| **AmendVault** | Manages deposits, withdrawals, share accounting, and invariant enforcement. ERC4626-compliant. |
+| **AmendEngine** | Executes strategy operations: fund deployment, recall, and P&L reporting. Role-based access control. |
+| **Destinations** | External contracts receiving deployed capital. Must be whitelisted and vetted off-chain. |
 
-**Version 0.1.1** - Production Ready
+**Role Separation:**
 
-- Core contracts implemented and tested
-- 60 tests passing (unit, fuzz, integration)
-- Ready for external security audit
-- Ready for testnet deployment
+| Role | Capability |
+|------|------------|
+| Vault Owner | Set engine, configure fees, rescue tokens |
+| Engine Admin | Manage whitelist, pause/unpause |
+| Engine Manager | Deploy and recall funds |
+| Engine Reporter | Report profit and loss |
 
-## Deployment
+---
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for deployment instructions.
+## Fee Mechanism
 
-### Quick Start
+AMEND uses a **dilution-based fee model**:
+
+- Fees are collected by minting new vault shares to the fee recipient.
+- No assets are extracted from the vault.
+- Total Value Locked (TVL) remains intact.
+- Existing shareholders experience proportional dilution only when profit is realized.
+
+**Fee Calculation:**
+```
+feeShares = convertToShares(profit * feeBps / 10000)
+```
+
+Shares are minted **only** when `profit > 0`.
+
+---
+
+## The Invariant
+
+The core invariant is enforced in `reportLoss()`:
+
+```solidity
+function reportLoss(uint256 lossAssets) external onlyEngine nonReentrant {
+    require(lossAssets > 0, "AMEND: zero loss");
+    require(lossAssets <= investedAssets, "AMEND: loss > invested");
+
+    investedAssets -= lossAssets;
+
+    // ════════════════════════════════════════════════════════════
+    // NO FEE IS EVER MINTED HERE — BY DESIGN
+    // This is the ethical foundation of AMEND Protocol.
+    // ════════════════════════════════════════════════════════════
+
+    emit LossReported(lossAssets);
+}
+```
+
+**Verification:**
+- No `_mint()` call exists in any loss path.
+- `require` statements prevent invalid loss reporting.
+- Fuzz tests confirm fee recipient balance never increases on loss.
+- No governance mechanism can override this constraint.
+
+---
+
+## Technical Specifications
+
+| Property | Value |
+|----------|-------|
+| Token Standard | ERC4626 |
+| Underlying Asset | USDC (configurable) |
+| Solidity Version | 0.8.20 |
+| Target Network | Base (L2) |
+| Dependencies | OpenZeppelin Contracts v5.0.0 |
+| Test Coverage | 102/103 tests passing |
+
+---
+
+## Repository Structure
+
+```
+amend-protocol/
+├── src/                    # v0.1.1 Production Contracts
+│   ├── AmendVault.sol
+│   ├── AmendEngine.sol
+│   └── interfaces/
+│       └── IAmendEngine.sol
+├── src/v2/                 # v0.2.0 Beta Contracts
+│   ├── AmendVaultV2.sol
+│   ├── AmendEngineV2.sol
+│   └── interfaces/
+│       └── IAmendVaultV2.sol
+├── test/                   # v0.1.1 Tests
+├── test/v2/                # v0.2.0 Tests
+├── script/                 # Deployment Scripts
+├── docs/                   # Documentation
+└── docs/v2/                # v0.2.0 Documentation
+```
+
+---
+
+## Getting Started
 
 ```bash
+# Clone repository
+git clone https://github.com/abdulwahed-sweden/amend-protocol.git
+cd amend-protocol
+
 # Install dependencies
 forge install
 
@@ -93,38 +203,40 @@ forge build
 
 # Run tests
 forge test -vv
-
-# Deploy to testnet
-source .env
-forge script script/Deploy.s.sol:Deploy --rpc-url $BASE_SEPOLIA_RPC --broadcast
 ```
 
-## Audit Readiness
+For deployment instructions, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-See [docs/AUDIT_CHECKLIST.md](docs/AUDIT_CHECKLIST.md) for:
-- Contract inventory
-- Core invariants with code references
-- Access control matrices
-- Test coverage summary
-- Known limitations
+---
 
-## Operations
+## Roadmap
 
-See [docs/OPERATOR_MANUAL.md](docs/OPERATOR_MANUAL.md) for:
-- Role definitions and responsibilities
-- Daily operations checklists
-- Capital deployment procedures
-- Emergency procedures
+| Milestone | Status |
+|-----------|--------|
+| v0.1.1 Core Implementation | Complete |
+| v0.2.0 Atomic Settlement | Under Review |
+| Testnet Deployment (Base Sepolia) | Pending |
+| External Security Audit | Pending |
+| Mainnet Deployment (Base) | Planned |
 
-## Contract Addresses
+---
 
-### Base Sepolia (Testnet)
+## Documentation
 
-Not yet deployed.
+- [Deployment Guide](docs/DEPLOYMENT.md)
+- [Operator Manual](docs/OPERATOR_MANUAL.md)
+- [Audit Checklist](docs/AUDIT_CHECKLIST.md)
+- [Security Model](docs/SECURITY.md)
+- [v0.2.0 Changelog](docs/v2/CHANGELOG.md)
+- [v0.2.0 Migration Guide](docs/v2/MIGRATION.md)
 
-### Base Mainnet
+---
 
-Not yet deployed.
+## Author
+
+**Abdulwahed Mansour**
+
+---
 
 ## License
 
