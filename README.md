@@ -6,6 +6,15 @@
 > **Status:** Production Ready (Testnet)
 > **Audit:** Pending
 
+> ⚠️ **Important Version Notice**
+>
+> AMEND Protocol operates with two parallel development tracks.
+>
+> - **v0.1.1** is the only production-ready release and the sole version intended for real deployments and external audits.
+> - **v0.2.0** is an experimental research track under active review and **MUST NOT** be used with real funds.
+>
+> External auditors, reviewers, and integrators should scope their analysis exclusively to **v0.1.1**.
+
 ---
 
 ## The Problem
@@ -51,8 +60,8 @@ This is not a governance promise. It is a **structural invariant** enforced at t
 
 | Version | Status | Architecture | Description |
 |---------|--------|--------------|-------------|
-| **v0.1.1** | Production Ready | Explicit Settlement | Stable release enforcing core invariant. Engine pushes funds via `divest()` + `reportProfit()`. |
-| **v0.2.0** | Beta / Under Review | Atomic Settlement | Vault pulls funds via `repay()`. Eliminates intermediate accounting states. |
+| **v0.1.1** | **Stable / Audit Target** | Explicit Settlement | Production-ready release enforcing core invariant. Engine pushes funds via `divest()` + `reportProfit()`. |
+| **v0.2.0** | Experimental / Research | Atomic Settlement | Research architecture under review. Vault pulls funds via `repay()`. **Not for production use.** |
 
 **Important:**
 - v0.2.0 does **not** replace v0.1.1.
@@ -169,21 +178,21 @@ function reportLoss(uint256 lossAssets) external onlyEngine nonReentrant {
 
 ```
 amend-protocol/
-├── src/                    # v0.1.1 Production Contracts
+├── src/                    # v0.1.1 Production Contracts (Audit Target)
 │   ├── AmendVault.sol
 │   ├── AmendEngine.sol
 │   └── interfaces/
 │       └── IAmendEngine.sol
-├── src/v2/                 # v0.2.0 Beta Contracts
+├── src/v2/                 # v0.2.0 Experimental (Research-only, not production)
 │   ├── AmendVaultV2.sol
 │   ├── AmendEngineV2.sol
 │   └── interfaces/
 │       └── IAmendVaultV2.sol
 ├── test/                   # v0.1.1 Tests
-├── test/v2/                # v0.2.0 Tests
+├── test/v2/                # v0.2.0 Tests (Experimental)
 ├── script/                 # Deployment Scripts
 ├── docs/                   # Documentation
-└── docs/v2/                # v0.2.0 Documentation
+└── docs/v2/                # v0.2.0 Documentation (Experimental)
 ```
 
 ---
