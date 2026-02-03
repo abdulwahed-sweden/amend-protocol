@@ -1,6 +1,6 @@
 # AMEND Protocol
 
-**Ethical Fee Architecture for ERC4626 Vaults**
+**Correcting Financial Injustice in DeFi — Ethical Fee Architecture for ERC4626 Vaults**
 
 > **Version:** v0.1.1
 > **Status:** Production Ready (Testnet)
@@ -29,6 +29,8 @@ This creates a misalignment of incentives:
 - **"Code is Law" as justification** — Technical immutability is used to normalize extractive structures, rather than to enforce ethical constraints.
 
 These patterns are not malicious by design, but they reflect a gap in how fee mechanisms have been architected. AMEND Protocol addresses this gap.
+
+In practice, "Code is Law" has become a shield for those who write extractive code.
 
 ---
 
@@ -218,13 +220,28 @@ For deployment instructions, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ---
 
+## Testnet Deployment (Base Sepolia)
+
+**Network:** Base Sepolia (Chain ID: 84532)
+**Version:** v0.1.1
+**Deployer:** `0x3011BfD673a9D09f9761203A7fFCca757Af22587`
+**Explorer:** https://sepolia.basescan.org/
+
+| Contract | Address |
+|----------|---------|
+| MockERC20 (mUSDC) | `0x61150aC71eA8E2DbB46eBa7109763b7eF5147083` |
+| AmendVault | `0xF8B715bC559032316B56cE41E7fcF7F008a5E093` |
+| AmendEngine | `0x734537C018d850a895Ef40bF305b9B34cF7E2197` |
+
+---
+
 ## Roadmap
 
 | Milestone | Status |
 |-----------|--------|
 | v0.1.1 Core Implementation | Complete |
 | v0.2.0 Atomic Settlement | Under Review |
-| Testnet Deployment (Base Sepolia) | Pending |
+| Testnet Deployment (Base Sepolia) | ✅ Complete |
 | External Security Audit | Pending |
 | Mainnet Deployment (Base) | Planned |
 
