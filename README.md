@@ -1,10 +1,19 @@
 # AMEND Protocol
 
-**Ethical Fee Architecture for ERC4626 Vaults**
+**Correcting Financial Injustice in DeFi — Ethical Fee Architecture for ERC4626 Vaults**
 
 > **Version:** v0.1.1
 > **Status:** Production Ready (Testnet)
 > **Audit:** Pending
+
+> ⚠️ **Important Version Notice**
+>
+> AMEND Protocol operates with two parallel development tracks.
+>
+> - **v0.1.1** is the only production-ready release and the sole version intended for real deployments and external audits.
+> - **v0.2.0** is an experimental research track under active review and **MUST NOT** be used with real funds.
+>
+> External auditors, reviewers, and integrators should scope their analysis exclusively to **v0.1.1**.
 
 ---
 
@@ -20,6 +29,8 @@ This creates a misalignment of incentives:
 - **"Code is Law" as justification** — Technical immutability is used to normalize extractive structures, rather than to enforce ethical constraints.
 
 These patterns are not malicious by design, but they reflect a gap in how fee mechanisms have been architected. AMEND Protocol addresses this gap.
+
+In practice, "Code is Law" has become a shield for those who write extractive code.
 
 ---
 
@@ -51,8 +62,8 @@ This is not a governance promise. It is a **structural invariant** enforced at t
 
 | Version | Status | Architecture | Description |
 |---------|--------|--------------|-------------|
-| **v0.1.1** | Production Ready | Explicit Settlement | Stable release enforcing core invariant. Engine pushes funds via `divest()` + `reportProfit()`. |
-| **v0.2.0** | Beta / Under Review | Atomic Settlement | Vault pulls funds via `repay()`. Eliminates intermediate accounting states. |
+| **v0.1.1** | **Stable / Audit Target** | Explicit Settlement | Production-ready release enforcing core invariant. Engine pushes funds via `divest()` + `reportProfit()`. |
+| **v0.2.0** | Experimental / Research | Atomic Settlement | Research architecture under review. Vault pulls funds via `repay()`. **Not for production use.** |
 
 **Important:**
 - v0.2.0 does **not** replace v0.1.1.
@@ -169,21 +180,21 @@ function reportLoss(uint256 lossAssets) external onlyEngine nonReentrant {
 
 ```
 amend-protocol/
-├── src/                    # v0.1.1 Production Contracts
+├── src/                    # v0.1.1 Production Contracts (Audit Target)
 │   ├── AmendVault.sol
 │   ├── AmendEngine.sol
 │   └── interfaces/
 │       └── IAmendEngine.sol
-├── src/v2/                 # v0.2.0 Beta Contracts
+├── src/v2/                 # v0.2.0 Experimental (Research-only, not production)
 │   ├── AmendVaultV2.sol
 │   ├── AmendEngineV2.sol
 │   └── interfaces/
 │       └── IAmendVaultV2.sol
 ├── test/                   # v0.1.1 Tests
-├── test/v2/                # v0.2.0 Tests
+├── test/v2/                # v0.2.0 Tests (Experimental)
 ├── script/                 # Deployment Scripts
 ├── docs/                   # Documentation
-└── docs/v2/                # v0.2.0 Documentation
+└── docs/v2/                # v0.2.0 Documentation (Experimental)
 ```
 
 ---
@@ -209,13 +220,28 @@ For deployment instructions, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ---
 
+## Testnet Deployment (Base Sepolia)
+
+**Network:** Base Sepolia (Chain ID: 84532)
+**Version:** v0.1.1
+**Deployer:** `0x3011BfD673a9D09f9761203A7fFCca757Af22587`
+**Explorer:** https://sepolia.basescan.org/
+
+| Contract | Address |
+|----------|---------|
+| MockERC20 (mUSDC) | `0x61150aC71eA8E2DbB46eBa7109763b7eF5147083` |
+| AmendVault | `0xF8B715bC559032316B56cE41E7fcF7F008a5E093` |
+| AmendEngine | `0x734537C018d850a895Ef40bF305b9B34cF7E2197` |
+
+---
+
 ## Roadmap
 
 | Milestone | Status |
 |-----------|--------|
 | v0.1.1 Core Implementation | Complete |
 | v0.2.0 Atomic Settlement | Under Review |
-| Testnet Deployment (Base Sepolia) | Pending |
+| Testnet Deployment (Base Sepolia) | ✅ Complete |
 | External Security Audit | Pending |
 | Mainnet Deployment (Base) | Planned |
 
