@@ -1,0 +1,33 @@
+--------------------------------------------------
+AMEND Protocol — Base Sepolia Testnet Deployment
+
+Version: v0.1.1
+Network: Base Sepolia
+Chain ID: 84532
+Date: 2026-02-03
+Deployer:
+0x3011BfD673a9D09f9761203A7fFCca757Af22587
+
+--------------------------------------------------
+Deployed Contracts
+
+Mock USDC (mUSDC):
+0x61150aC71eA8E2DbB46eBa7109763b7eF5147083
+
+AmendVault (ERC4626):
+0xF8B715bC559032316B56cE41E7fcF7F008a5E093
+
+AmendEngine:
+0x734537C018d850a895Ef40bF305b9B34cF7E2197
+
+--------------------------------------------------
+Notes:
+- This deployment is for TESTNET ONLY
+- Funds have no real-world value
+- Used for functional and behavioral validation
+
+--------------------------------------------------
+Useful Links:
+Explorer: https://sepolia.basescan.org/
+
+--------------------------------------------------
